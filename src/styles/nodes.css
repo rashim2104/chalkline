@@ -1,0 +1,132 @@
+.infra-node {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 208px;
+  min-height: 78px;
+  padding: 12px 14px 12px 18px;
+  background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-node);
+  font-family: var(--font-sans);
+  transition: border-color 160ms ease, box-shadow 160ms ease, opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.infra-node__accent {
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+.infra-node[data-kind='edge'] { --accent: var(--kind-edge); }
+.infra-node[data-kind='gateway'] { --accent: var(--kind-gateway); }
+.infra-node[data-kind='service'] { --accent: var(--kind-service); }
+.infra-node[data-kind='worker'] { --accent: var(--kind-worker); }
+.infra-node[data-kind='database'] { --accent: var(--kind-database); }
+.infra-node[data-kind='cache'] { --accent: var(--kind-cache); }
+.infra-node[data-kind='queue'] { --accent: var(--kind-queue); }
+.infra-node[data-kind='storage'] { --accent: var(--kind-storage); }
+.infra-node[data-kind='external'] { --accent: var(--kind-external); }
+
+.infra-node__glyph {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.infra-node__glyph svg path {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.infra-node__body { min-width: 0; }
+
+.infra-node__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.infra-node__label {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.infra-node__tier {
+  flex: none;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+}
+
+.infra-node[data-tier='tier0'] .infra-node__tier {
+  color: #fca5a5;
+  border-color: #7f1d1d;
+  background: #7f1d1d33;
+}
+
+.infra-node__detail {
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Scope states - the visual core of the demo. */
+.infra-node[data-state='in-scope'] {
+  border-color: var(--scope-line);
+  box-shadow: 0 0 0 1px var(--scope-line), 0 0 24px -4px var(--scope-glow),
+    var(--shadow-node);
+}
+
+.infra-node[data-state='out-of-scope'] {
+  opacity: 0.34;
+  filter: saturate(0.4);
+}
+
+.infra-node[data-selected='true'] {
+  border-color: var(--line-strong);
+}
+
+.infra-handle {
+  width: 7px;
+  height: 7px;
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.infra-handle.connecting,
+.infra-handle.valid {
+  background: var(--scope-line);
+  border-color: var(--scope-line);
+}
