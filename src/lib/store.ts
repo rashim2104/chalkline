@@ -138,14 +138,24 @@ export function describeComponent(actor: Actor, id: string): Outcome<string> {
     log({ actor, tool: 'describe_component', status: 'refused', title: `describe ${id}`, detail: r.message, refusalCode: r.code, unblock: r.unblock })
     return r
   }
-  const deps = state.edges.filter((e) => e.source === id).map((e) => e.target)
-  const dependents = state.edges.filter((e) => e.target === id).map((e) => e.source)
+  const out = state.edges.filter((e) => e.source === id)
+  const incoming = state.edges.filter((e) => e.target === id)
+  const passive = ['database', 'cache', 'queue', 'storage'].includes(node.data.kind)
   const text = [
     `${node.data.label} - ${node.data.kind}, ${node.data.criticality}, subsystem ${node.data.subsystem}.`,
     node.data.detail,
-    deps.length ? `Depends on: ${deps.join(', ')}.` : 'Depends on nothing.',
-    dependents.length ? `Depended on by: ${dependents.join(', ')}.` : 'Nothing depends on it.',
-  ].join(' ')
+    out.length
+      ? `${passive ? 'Feeds' : 'Calls'}: ${out.map((e) => `${e.target} (${e.data?.protocol})`).join(', ')}.`
+      : `${passive ? 'Feeds nothing.' : 'Calls nothing.'}`,
+    incoming.length
+      ? `Called by: ${incoming.map((e) => `${e.source} (${e.data?.protocol})`).join(', ')}.`
+      : 'Nothing calls it.',
+    passive
+      ? 'This is a passive component: it never initiates a call.'
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
   log({ actor, tool: 'describe_component', status: 'ok', title: `describe ${node.data.label}` })
   return allow(text)
 }
@@ -315,20 +325,45 @@ export async function removeComponent(actor: Actor, id: string): Promise<Outcome
 // cache can be attached to a service, a consumer only to a queue, ingress
 // only where the scope owns an entrypoint.
 
+const W = 224
+const H = 78
+const GAP = 26
+
+const overlaps = (x: number, y: number, nodes: InfraNode[]): boolean =>
+  nodes.some(
+    (n) =>
+      x < n.position.x + (n.width ?? W) + GAP &&
+      x + W + GAP > n.position.x &&
+      y < n.position.y + (n.height ?? H) + GAP &&
+      y + H + GAP > n.position.y,
+  )
+
+/**
+ * Walk outward from the preferred offset until a slot is clear. Dropping a new
+ * component at a fixed offset stacks it on top of whatever is already there.
+ */
 const spawnBeside = (
   anchor: InfraNode,
   id: string,
   data: InfraNodeData,
   dx: number,
   dy: number,
-): InfraNode => ({
-  id,
-  type: 'infra',
-  position: { x: anchor.position.x + dx, y: anchor.position.y + dy },
-  width: 224,
-  height: 78,
-  data,
-})
+): InfraNode => {
+  const x0 = anchor.position.x + dx
+  const y0 = anchor.position.y + dy
+  let x = x0
+  let y = y0
+  for (let ring = 0; ring < 12 && overlaps(x, y, state.nodes); ring++) {
+    // Alternate below and above the preferred row, widening each pass.
+    const step = (Math.floor(ring / 2) + 1) * (H + GAP)
+    y = ring % 2 === 0 ? y0 + step : y0 - step
+    if (ring >= 7) {
+      x = x0 + (W + GAP)
+      y = y0 + (ring - 7) * (H + GAP)
+    }
+  }
+  return { id, type: 'infra', position: { x, y }, width: W, height: H, data }
+}
 
 const slug = (label: string) =>
   label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
