@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { InfraEdge, InfraNode } from './seed'
 import { seedEdges, seedNodes } from './seed'
+import { ARCHITECTURES, DEFAULT_ARCHITECTURE } from './architectures'
 import { checkConnect, checkDelete, refuse, allow, type Outcome } from './rules'
 import { deriveScope, subsystemRect, type ScopeState } from './scope'
 import type { InfraEdgeData, InfraNodeData, ScopeRect } from './types'
@@ -30,6 +31,7 @@ export type Pending = {
 }
 
 type State = {
+  architectureId: string
   nodes: InfraNode[]
   edges: InfraEdge[]
   scopeRect: ScopeRect | null
@@ -40,6 +42,7 @@ type State = {
 }
 
 let state: State = {
+  architectureId: DEFAULT_ARCHITECTURE,
   nodes: seedNodes,
   edges: seedEdges,
   scopeRect: null,
@@ -119,6 +122,26 @@ const outOfScope = (id: string) =>
 export const setScopeRect = (rect: ScopeRect | null) => set({ scopeRect: rect, drawing: false })
 
 export const setDrawing = (drawing: boolean) => set({ drawing })
+
+/**
+ * Swap the whole graph. The same twelve tools and the same rule engine apply
+ * unchanged; only the architecture underneath them differs.
+ */
+export function loadArchitecture(id: string) {
+  const arch = ARCHITECTURES[id]
+  if (!arch) return
+  set({
+    architectureId: id,
+    nodes: arch.nodes,
+    edges: arch.edges,
+    scopeRect: null,
+    drawing: false,
+    activity: [],
+    pending: null,
+  })
+}
+
+export const currentArchitecture = () => ARCHITECTURES[state.architectureId]
 
 export const scopeToSubsystem = (subsystem: string) =>
   set({ scopeRect: subsystemRect(state.nodes, subsystem), drawing: false })
