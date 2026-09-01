@@ -13,24 +13,51 @@ type RegisteredTool = {
  */
 export function ToolInspector() {
   const [tools, setTools] = useState<RegisteredTool[]>([])
-  const [supported, setSupported] = useState(true)
+  // Derived at init rather than set from inside the effect. The extension that
+  // provides modelContext may inject it after mount, so this is re-checked
+  // below and only written when it actually changes.
+  const [supported, setSupported] = useState(
+    () => typeof document !== 'undefined' && Boolean(document.modelContext),
+  )
 
   useEffect(() => {
-    const mc = document.modelContext
-    if (!mc) {
-      setSupported(false)
-      return
-    }
     let alive = true
+    let mc = document.modelContext
+
     const read = async () => {
+      if (!mc) return
       const list = (await mc.getTools()) as unknown as RegisteredTool[]
       if (alive) setTools(list)
     }
-    read()
-    mc.addEventListener('toolchange', read)
+
+    if (mc) {
+      read()
+      mc.addEventListener('toolchange', read)
+      return () => {
+        alive = false
+        mc?.removeEventListener('toolchange', read)
+      }
+    }
+
+    // Poll briefly for a late-injected API instead of reporting unsupported
+    // forever. Gives up after ten seconds.
+    let attempts = 0
+    const timer = setInterval(() => {
+      if (document.modelContext) {
+        clearInterval(timer)
+        mc = document.modelContext
+        setSupported(true)
+        read()
+        mc.addEventListener('toolchange', read)
+      } else if (++attempts >= 20) {
+        clearInterval(timer)
+      }
+    }, 500)
+
     return () => {
       alive = false
-      mc.removeEventListener('toolchange', read)
+      clearInterval(timer)
+      mc?.removeEventListener('toolchange', read)
     }
   }, [])
 
