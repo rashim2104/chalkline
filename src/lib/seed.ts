@@ -4,12 +4,20 @@ import type { InfraEdgeData, InfraNodeData } from './types'
 export type InfraNode = Node<InfraNodeData, 'infra'>
 export type InfraEdge = Edge<InfraEdgeData>
 
+export const NODE_SIZE = { width: 224, height: 78 } as const
+
 const n = (
   id: string,
   x: number,
   y: number,
   data: InfraNodeData,
-): InfraNode => ({ id, type: 'infra', position: { x, y }, data })
+): InfraNode => ({
+  id,
+  type: 'infra',
+  position: { x, y },
+  data,
+  ...NODE_SIZE,
+})
 
 export const SUBSYSTEMS = ['edge', 'identity', 'payments', 'catalog'] as const
 

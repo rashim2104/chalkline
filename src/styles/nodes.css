@@ -3,8 +3,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 208px;
-  min-height: 78px;
+  width: 224px;
+  height: 78px;
   padding: 12px 14px 12px 18px;
   background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
   border: 1px solid var(--line);

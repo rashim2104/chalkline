@@ -1,7 +1,7 @@
 import type { InfraEdge, InfraNode } from './seed'
 import type { NodeKind, ScopeRect } from './types'
 
-export const NODE_W = 208
+export const NODE_W = 224
 export const NODE_H = 78
 
 const intersects = (node: InfraNode, rect: ScopeRect): boolean => {
