@@ -9,7 +9,9 @@ capability surface is derived from the architecture the operator pointed at.
 
 Built for the [WebMCP Challenge](https://webmcp.devpost.com/).
 
-- **Live app:** _(deploying)_
+- **Live app:** <https://chalkline-opal.vercel.app>
+- **Start on the point:** [`?scope=payments`](https://chalkline-opal.vercel.app/?scope=payments)
+  · [`?arch=k8s&scope=control-plane`](https://chalkline-opal.vercel.app/?arch=k8s&scope=control-plane)
 - **Demo video:** _(recording)_
 - **Evidence:** [`docs/evidence/`](docs/evidence/) — transcripts of real runs
 
@@ -164,7 +166,7 @@ no model involved. Use this to confirm a tool works before blaming the model.
 
 ### Try this
 
-Open `?scope=payments`, then ask:
+Open <https://chalkline-opal.vercel.app/?scope=payments>, then ask:
 
 1. *"What's in scope right now?"* — `get_scope` reports the region and the live tool list
 2. *"Delete the identity database"* — it cannot. `identity-db` is not in any enum.
