@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { seedEdges, seedNodes } from './seed'
 import { checkConnect, checkDelete, dependentsOf, orphanedQueues } from './rules'
+import { ARCHITECTURES } from './architectures'
+import { deriveScope, subsystemRect } from './scope'
 import type { Refusal } from './rules'
 
 const byId = (id: string) => seedNodes.find((n) => n.id === id)!
@@ -86,5 +88,37 @@ describe('graph helpers', () => {
   it('detects a queue left without a consumer', () => {
     const starved = seedEdges.filter((e) => e.id !== 'payouts-queue->payouts-worker')
     expect(orphanedQueues(seedNodes, starved).map((n) => n.id)).toEqual(['payouts-queue'])
+  })
+})
+
+describe('the same rules applied to the Kubernetes control plane', () => {
+  const k8s = ARCHITECTURES.k8s
+  const k = (id: string) => k8s.nodes.find((n) => n.id === id)!
+
+  it('permits the API server to reach etcd', () => {
+    expect(checkConnect(k('apiserver'), k('etcd'), 'sql').ok).toBe(true)
+  })
+
+  it('refuses any other component reaching etcd directly', () => {
+    // Real Kubernetes invariant: etcd is reached through kube-apiserver only.
+    const r = asRefusal(checkConnect(k('kubelet'), k('etcd'), 'sql'))
+    expect(r.ok).toBe(false)
+    expect(r.code).toBe('cross_subsystem_datastore')
+  })
+
+  it('refuses etcd initiating a call', () => {
+    expect(asRefusal(checkConnect(k('etcd'), k('apiserver'), 'http')).code).toBe('passive_source')
+  })
+
+  it('refuses deleting etcd while the API server depends on it', () => {
+    const r = asRefusal(checkDelete(k('etcd'), k8s.edges))
+    expect(r.code).toBe('has_dependents')
+    expect(r.message).toMatch(/apiserver/)
+  })
+
+  it('offers no queue-shaped tools, because there is no queue', () => {
+    const scope = deriveScope(k8s.nodes, subsystemRect(k8s.nodes, 'control-plane'))
+    expect(scope.capabilities).not.toContain('attach_consumer')
+    expect(scope.capabilities).toContain('attach_cache')
   })
 })

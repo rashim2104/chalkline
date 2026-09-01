@@ -172,6 +172,29 @@ Open `?scope=payments`, then ask:
 4. Click the **identity** chip — `attach_consumer` disappears from the rail
 5. *"Remove payouts-worker"* — refused for dependents, then watch it recover
 
+## The same tools on a system nobody invented for this demo
+
+Switch to **Kubernetes control plane** in the header, or open
+[`?arch=k8s&scope=control-plane`](?arch=k8s&scope=control-plane).
+
+Same twelve tools. Same rule engine. Nothing was rewritten for it.
+
+Two things are worth watching. First, the header reads **6 editing tools**
+rather than seven: Kubernetes has no queue, so `attach_consumer` does not
+exist here. The capability surface adapted to an architecture the tools were
+not written for.
+
+Second, the rule engine enforces a real published invariant:
+
+> etcd is reached through the API server, never directly by other components.
+> — [Kubernetes architecture docs](https://kubernetes.io/docs/concepts/architecture/)
+
+Ask the agent to point `kubelet` at `etcd` and it is refused with
+`cross_subsystem_datastore`. That rule was written for the payments system's
+subsystem boundaries; it turns out to be the same rule Kubernetes documents.
+The refusal is correct infrastructure advice, not a constraint invented to
+make a demo look clever.
+
 ## Running locally
 
 ```bash
