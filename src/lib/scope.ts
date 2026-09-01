@@ -85,6 +85,23 @@ export function capabilitiesFor(scoped: InfraNode[]): Capability[] {
   return caps
 }
 
+/** Bounding box of every node in a subsystem, padded, for one-click presets. */
+export function subsystemRect(
+  nodes: InfraNode[],
+  subsystem: string,
+  pad = 34,
+): ScopeRect | null {
+  const members = nodes.filter((n) => n.data.subsystem === subsystem)
+  if (members.length === 0) return null
+  const xs = members.map((n) => n.position.x)
+  const ys = members.map((n) => n.position.y)
+  const x2 = Math.max(...members.map((n) => n.position.x + (n.width ?? NODE_W)))
+  const y2 = Math.max(...members.map((n) => n.position.y + (n.height ?? NODE_H)))
+  const x = Math.min(...xs)
+  const y = Math.min(...ys)
+  return { x: x - pad, y: y - pad, width: x2 - x + pad * 2, height: y2 - y + pad * 2 }
+}
+
 export interface ScopeState {
   rect: ScopeRect | null
   scoped: InfraNode[]

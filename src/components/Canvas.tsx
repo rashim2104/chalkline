@@ -33,6 +33,7 @@ export function Canvas() {
   const rawNodes = useStore((s) => s.nodes)
   const edges = useStore((s) => s.edges)
   const scope = useScope()
+  const drawing = useStore((s) => s.drawing)
 
   // Scope state is painted on, not stored: the architecture does not know
   // about the region, only the presentation layer does.
@@ -58,8 +59,10 @@ export function Canvas() {
         colorMode="dark"
         zIndexMode="auto"
         proOptions={{ hideAttribution: true }}
-        panOnDrag={[1, 2]}
+        panOnDrag={drawing ? false : [0, 1, 2]}
+        selectionKeyCode={null}
         selectionOnDrag={false}
+        nodesDraggable={!drawing}
         fitView
         fitViewOptions={{ padding: 0.18 }}
         minZoom={0.3}

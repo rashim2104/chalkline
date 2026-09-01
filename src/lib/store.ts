@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import type { InfraEdge, InfraNode } from './seed'
 import { seedEdges, seedNodes } from './seed'
 import { checkConnect, checkDelete, refuse, allow, type Outcome } from './rules'
-import { deriveScope, type ScopeState } from './scope'
+import { deriveScope, subsystemRect, type ScopeState } from './scope'
 import type { InfraEdgeData, InfraNodeData, ScopeRect } from './types'
 
 export type Actor = 'human' | 'agent'
@@ -33,6 +33,8 @@ type State = {
   nodes: InfraNode[]
   edges: InfraEdge[]
   scopeRect: ScopeRect | null
+  /** True while the operator is arming a freehand scope drag. */
+  drawing: boolean
   activity: Activity[]
   pending: Pending | null
 }
@@ -41,6 +43,7 @@ let state: State = {
   nodes: seedNodes,
   edges: seedEdges,
   scopeRect: null,
+  drawing: false,
   activity: [],
   pending: null,
 }
@@ -113,7 +116,12 @@ const outOfScope = (id: string) =>
 
 // ---------------------------------------------------------------- mutations
 
-export const setScopeRect = (rect: ScopeRect | null) => set({ scopeRect: rect })
+export const setScopeRect = (rect: ScopeRect | null) => set({ scopeRect: rect, drawing: false })
+
+export const setDrawing = (drawing: boolean) => set({ drawing })
+
+export const scopeToSubsystem = (subsystem: string) =>
+  set({ scopeRect: subsystemRect(state.nodes, subsystem), drawing: false })
 
 export const setNodes = (nodes: InfraNode[]) => set({ nodes })
 

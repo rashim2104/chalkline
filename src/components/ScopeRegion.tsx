@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useReactFlow } from '@xyflow/react'
-import { setScopeRect } from '../lib/store'
+import { useReactFlow, ViewportPortal } from '@xyflow/react'
+import { setScopeRect, useStore } from '../lib/store'
 import type { ScopeRect } from '../lib/types'
 
 type Draft = { x0: number; y0: number; x1: number; y1: number }
@@ -13,30 +13,29 @@ const toRect = (d: Draft): ScopeRect => ({
 })
 
 /**
- * Drag on empty canvas to draw the scope region. Held in flow coordinates so
- * it stays pinned to the architecture through pan and zoom.
+ * Drawing is an explicit armed mode rather than a modifier-drag: React Flow
+ * already owns shift-drag for box selection, and a hidden gesture is not
+ * something a first-time visitor will discover.
  */
 export function ScopeRegion({ rect }: { rect: ScopeRect | null }) {
-  const { screenToFlowPosition, flowToScreenPosition } = useReactFlow()
+  const { screenToFlowPosition } = useReactFlow()
+  const drawing = useStore((s) => s.drawing)
   const [draft, setDraft] = useState<Draft | null>(null)
-  const drafting = useRef(false)
+  const active = useRef(false)
 
   const onDown = useCallback(
     (event: PointerEvent) => {
-      const target = event.target as HTMLElement
-      if (!target.classList.contains('react-flow__pane')) return
-      if (!event.shiftKey) return
-      event.preventDefault()
+      if (!drawing || event.button !== 0) return
       const p = screenToFlowPosition({ x: event.clientX, y: event.clientY })
-      drafting.current = true
+      active.current = true
       setDraft({ x0: p.x, y0: p.y, x1: p.x, y1: p.y })
     },
-    [screenToFlowPosition],
+    [drawing, screenToFlowPosition],
   )
 
   const onMove = useCallback(
     (event: PointerEvent) => {
-      if (!drafting.current) return
+      if (!active.current) return
       const p = screenToFlowPosition({ x: event.clientX, y: event.clientY })
       setDraft((d) => (d ? { ...d, x1: p.x, y1: p.y } : d))
     },
@@ -44,8 +43,8 @@ export function ScopeRegion({ rect }: { rect: ScopeRect | null }) {
   )
 
   const onUp = useCallback(() => {
-    if (!drafting.current) return
-    drafting.current = false
+    if (!active.current) return
+    active.current = false
     setDraft((d) => {
       if (d) {
         const r = toRect(d)
@@ -56,6 +55,7 @@ export function ScopeRegion({ rect }: { rect: ScopeRect | null }) {
   }, [])
 
   useEffect(() => {
+    if (!drawing) return
     window.addEventListener('pointerdown', onDown)
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
@@ -64,26 +64,28 @@ export function ScopeRegion({ rect }: { rect: ScopeRect | null }) {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
     }
-  }, [onDown, onMove, onUp])
+  }, [drawing, onDown, onMove, onUp])
 
   const live = draft ? toRect(draft) : rect
-  if (!live) return null
-
-  const tl = flowToScreenPosition({ x: live.x, y: live.y })
-  const br = flowToScreenPosition({ x: live.x + live.width, y: live.y + live.height })
 
   return (
-    <div
-      className="scope-region"
-      data-drafting={draft ? 'true' : undefined}
-      style={{
-        left: tl.x,
-        top: tl.y,
-        width: Math.max(0, br.x - tl.x),
-        height: Math.max(0, br.y - tl.y),
-      }}
-    >
-      <span className="scope-region__tag">agent scope</span>
-    </div>
+    <>
+      {drawing && <div className="scope-arm" />}
+      {live && (
+        <ViewportPortal>
+          <div
+            className="scope-region"
+            data-drafting={draft !== null ? 'true' : undefined}
+            style={{
+              transform: `translate(${live.x}px, ${live.y}px)`,
+              width: live.width,
+              height: live.height,
+            }}
+          >
+            <span className="scope-region__tag">agent scope</span>
+          </div>
+        </ViewportPortal>
+      )}
+    </>
   )
 }

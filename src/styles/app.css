@@ -109,7 +109,10 @@ body {
 /* -------------------------------------------------------- scope region */
 
 .scope-region {
-  position: fixed;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
   pointer-events: none;
   border: 1.5px dashed var(--scope-line);
   border-radius: var(--radius-sm);
@@ -330,3 +333,58 @@ body {
 .btn--ghost { background: transparent; color: var(--text-1); }
 .btn--danger { border-color: #7f1d1d; background: #7f1d1d; }
 .btn--danger:hover { background: #991b1b; }
+
+/* --------------------------------------------------------- scope controls */
+
+.scopebar { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+
+.scopebar__state {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 6px 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-2);
+}
+
+.presets { display: flex; align-items: center; gap: 5px; }
+
+.presets__label {
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-right: 3px;
+}
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 130ms ease, background 130ms ease, color 130ms ease;
+}
+
+.chip:hover { border-color: var(--line-strong); color: var(--text-0); }
+
+.chip[data-active='true'] {
+  border-color: var(--scope-line);
+  background: var(--scope-fill);
+  color: #f6dfa8;
+}
+
+.chip--draw { border-style: dashed; }
+
+/* Full-canvas crosshair while the draw mode is armed. */
+.scope-arm {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  cursor: crosshair;
+  background: #f5c4510a;
+}
