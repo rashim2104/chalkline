@@ -301,3 +301,114 @@ export async function removeComponent(actor: Actor, id: string): Promise<Outcome
   })
   return allow(`Removed ${node.data.label}.`)
 }
+
+// ------------------------------------------------- scope-shaped additions
+// These exist only when the scope region contains the thing they act on: a
+// cache can be attached to a service, a consumer only to a queue, ingress
+// only where the scope owns an entrypoint.
+
+const spawnBeside = (
+  anchor: InfraNode,
+  id: string,
+  data: InfraNodeData,
+  dx: number,
+  dy: number,
+): InfraNode => ({
+  id,
+  type: 'infra',
+  position: { x: anchor.position.x + dx, y: anchor.position.y + dy },
+  width: 224,
+  height: 78,
+  data,
+})
+
+const slug = (label: string) =>
+  label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+
+function attachNew(
+  actor: Actor,
+  tool: string,
+  targetId: string,
+  label: string,
+  kind: InfraNodeData['kind'],
+  detail: string,
+  protocol: InfraEdgeData['protocol'],
+  direction: 'from-target' | 'to-target',
+  offset: [number, number],
+): Outcome<string> {
+  const target = state.nodes.find((n) => n.id === targetId)
+  if (!target) {
+    const r = refuse('unknown_component', 'The component must exist.', 'architecture', `No component ${targetId}.`, 'Call list_components to see valid names.')
+    log({ actor, tool, status: 'refused', title: `${tool} ${targetId}`, detail: r.message, refusalCode: r.code, unblock: r.unblock })
+    return r
+  }
+  if (!inScope(targetId)) {
+    const r = outOfScope(targetId)
+    log({ actor, tool, status: 'refused', title: `${tool} ${targetId}`, detail: r.message, refusalCode: r.code, unblock: r.unblock })
+    return r
+  }
+
+  const id = slug(label)
+  if (state.nodes.some((n) => n.id === id)) {
+    const r = refuse('duplicate_component', 'Component names are unique.', 'architecture', `${id} already exists.`, 'Choose a different name.')
+    log({ actor, tool, status: 'refused', title: `${tool} ${label}`, detail: r.message, refusalCode: r.code, unblock: r.unblock })
+    return r
+  }
+
+  const node = spawnBeside(target, id, {
+    label,
+    kind,
+    detail,
+    subsystem: target.data.subsystem,
+    env: target.data.env,
+    criticality: 'tier2',
+  }, offset[0], offset[1])
+
+  const [source, dest] =
+    direction === 'from-target' ? [targetId, id] : [id, targetId]
+
+  set({
+    nodes: [...state.nodes, node],
+    edges: [
+      ...state.edges,
+      { id: `${source}->${dest}`, source, target: dest, type: 'infra', data: { protocol } },
+    ],
+  })
+  log({ actor, tool, status: 'ok', title: `${label} attached to ${target.data.label}`, detail: `${source} -> ${dest} over ${protocol}` })
+  return allow(`Attached ${label} to ${target.data.label} over ${protocol}.`)
+}
+
+export const attachCache = (actor: Actor, serviceId: string, label: string, detail: string) =>
+  attachNew(actor, 'attach_cache', serviceId, label, 'cache', detail, 'redis', 'from-target', [300, -90])
+
+export const attachConsumer = (actor: Actor, queueId: string, label: string, detail: string) =>
+  attachNew(actor, 'attach_consumer', queueId, label, 'worker', detail, 'amqp', 'from-target', [300, 90])
+
+export function routeIngress(
+  actor: Actor,
+  entrypointId: string,
+  targetId: string,
+): Outcome<string> {
+  return connectComponents(actor, entrypointId, targetId, 'http')
+}
+
+export function annotateComponent(actor: Actor, id: string, note: string): Outcome<string> {
+  const node = state.nodes.find((n) => n.id === id)
+  if (!node) {
+    const r = refuse('unknown_component', 'The component must exist.', 'architecture', `No component ${id}.`, 'Call list_components to see valid names.')
+    log({ actor, tool: 'annotate_component', status: 'refused', title: `annotate ${id}`, detail: r.message, refusalCode: r.code, unblock: r.unblock })
+    return r
+  }
+  if (!inScope(id)) {
+    const r = outOfScope(id)
+    log({ actor, tool: 'annotate_component', status: 'refused', title: `annotate ${id}`, detail: r.message, refusalCode: r.code, unblock: r.unblock })
+    return r
+  }
+  set({
+    nodes: state.nodes.map((n) =>
+      n.id === id ? { ...n, data: { ...n.data, detail: note } } : n,
+    ),
+  })
+  log({ actor, tool: 'annotate_component', status: 'ok', title: `annotated ${node.data.label}`, detail: note })
+  return allow(`Updated ${node.data.label}: ${note}`)
+}

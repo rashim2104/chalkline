@@ -1,10 +1,14 @@
 import { useWebMCP } from 'use-webmcp-tool'
 import {
   addComponent,
+  annotateComponent,
+  attachCache,
+  attachConsumer,
   connectComponents,
   describeComponent,
   detachDependency,
   removeComponent,
+  routeIngress,
   useScope,
   useStore,
 } from '../lib/store'
@@ -45,6 +49,13 @@ export function ChalklineTools() {
     .map((e) => e.id)
   const removableIds = scope.scoped
     .filter((n) => n.data.kind !== 'external')
+    .map((n) => n.id)
+  const cacheableIds = scope.scoped
+    .filter((n) => n.data.kind === 'service' || n.data.kind === 'worker')
+    .map((n) => n.id)
+  const queueIds = scope.scoped.filter((n) => n.data.kind === 'queue').map((n) => n.id)
+  const entrypointIds = scope.scoped
+    .filter((n) => n.data.kind === 'edge' || n.data.kind === 'gateway')
     .map((n) => n.id)
   const region = scope.rect
     ? `The scope region currently holds ${scope.scoped.length} component(s): ${scopedIds.join(', ')}.`
@@ -186,6 +197,80 @@ export function ChalklineTools() {
     enabled: can('remove_component') && removableIds.length > 0,
     execute: async ({ component }: { component: string }) =>
       say(await removeComponent('agent', component)),
+  })
+
+  useWebMCP({
+    name: 'attach_cache',
+    description: `Put a cache in front of a service that is inside the scope region. Only exists while the region holds a service or worker. ${region}`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        service: { type: 'string', enum: cacheableIds, description: 'Service to cache for.' },
+        label: { type: 'string', description: 'Name for the new cache.' },
+        detail: { type: 'string', description: 'Engine and sizing.' },
+      },
+      required: ['service', 'label', 'detail'],
+      additionalProperties: false,
+    },
+    annotations: MUTATING,
+    enabled: can('attach_cache') && cacheableIds.length > 0,
+    execute: ({ service, label, detail }: { service: string; label: string; detail: string }) =>
+      say(attachCache('agent', service, label, detail)),
+  })
+
+  useWebMCP({
+    name: 'attach_consumer',
+    description: `Give a queue a worker to drain it. This tool only exists while the scope region contains a queue. ${region}`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        queue: { type: 'string', enum: queueIds, description: 'Queue needing a consumer.' },
+        label: { type: 'string', description: 'Name for the new worker.' },
+        detail: { type: 'string', description: 'Runtime and concurrency.' },
+      },
+      required: ['queue', 'label', 'detail'],
+      additionalProperties: false,
+    },
+    annotations: MUTATING,
+    enabled: can('attach_consumer') && queueIds.length > 0,
+    execute: ({ queue, label, detail }: { queue: string; label: string; detail: string }) =>
+      say(attachConsumer('agent', queue, label, detail)),
+  })
+
+  useWebMCP({
+    name: 'route_ingress',
+    description: `Route traffic from an entrypoint the scope region owns to a component. Only exists while the region holds an edge or gateway. ${region}`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entrypoint: { type: 'string', enum: entrypointIds, description: 'Edge or gateway, in scope.' },
+        target: { type: 'string', enum: allIds, description: 'Where traffic should go.' },
+      },
+      required: ['entrypoint', 'target'],
+      additionalProperties: false,
+    },
+    annotations: MUTATING,
+    enabled: can('route_ingress') && entrypointIds.length > 0,
+    execute: ({ entrypoint, target }: { entrypoint: string; target: string }) =>
+      say(routeIngress('agent', entrypoint, target)),
+  })
+
+  useWebMCP({
+    name: 'annotate_component',
+    description: `Revise the one-line description of a component inside the scope region. ${region}`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        component: { type: 'string', enum: scopedIds, description: 'Component id, in scope.' },
+        note: { type: 'string', description: 'Replacement one-line detail.' },
+      },
+      required: ['component', 'note'],
+      additionalProperties: false,
+    },
+    annotations: MUTATING,
+    enabled: can('annotate_component') && scopedIds.length > 0,
+    execute: ({ component, note }: { component: string; note: string }) =>
+      say(annotateComponent('agent', component, note)),
   })
 
   return null

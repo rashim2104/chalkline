@@ -28,12 +28,10 @@ export const nodesInScope = (
  * registered tool names exactly - the inspector diffs against this set.
  */
 export type Capability =
-  | 'describe_component'
   | 'add_component'
   | 'connect_components'
   | 'detach_dependency'
   | 'remove_component'
-  | 'attach_datastore'
   | 'attach_cache'
   | 'attach_consumer'
   | 'route_ingress'
@@ -52,7 +50,7 @@ const ACTIVE_KINDS: NodeKind[] = ['service', 'worker', 'gateway', 'edge']
 export function capabilitiesFor(scoped: InfraNode[]): Capability[] {
   if (scoped.length === 0) return []
 
-  const caps: Capability[] = ['describe_component', 'annotate_component']
+  const caps: Capability[] = ['annotate_component']
   const hasActive = has(scoped, ...ACTIVE_KINDS)
 
   // Something in scope must be able to initiate a call before any dependency
@@ -62,7 +60,7 @@ export function capabilitiesFor(scoped: InfraNode[]): Capability[] {
   }
 
   if (has(scoped, 'service', 'worker')) {
-    caps.push('attach_datastore', 'attach_cache')
+    caps.push('attach_cache')
   }
 
   // A consumer can only be attached to a queue that is actually in scope.
